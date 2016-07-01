@@ -2,14 +2,16 @@
 {-# LANGUAGE DataKinds #-}
 module Main where
 
-import Criterion.IO
 import Criterion.Main
 
 import Control.Concurrent.Async
 
+import Control.Monad.Except
+
 import Pipes ((>->))
 import qualified Pipes as P
 import qualified Pipes.Prelude as P
+import Pipes.Safe
 
 import Servant
 import Servant.Client
@@ -17,20 +19,29 @@ import Servant.CSV.Cassava
 import Servant.Pipes
 import Servant.Pipes.Csv
 
+import Network.HTTP.Client (newManager, defaultManagerSettings)
+
 import Network.Wai.Handler.Warp (run)
 
 main :: IO ()
 main = do
 	t <- async runServer
 	link t
+	m <- newManager defaultManagerSettings
+	
+
+	let
+		testClient = client testApi
+		baseUrl = BaseUrl Http "localhost" 57232 ""
+		runBench i = do
+			Right p <- runExceptT $ testClient i m baseUrl
+			runSafeT $ P.length p
+
 	defaultMain
 		[ bench "100 rows" $ nfIO (runBench 100)
+		, bench "1,000 rows" $ nfIO (runBench 1000)
 		, bench "10,000 rows" $ nfIO (runBench 10000)
-		, bench "1,000,000 rows" $ nfIO (runBench 1000000)
 		]
-
-runBench :: Int -> IO ()
-runBench = undefined
 
 data DefaultCsvOpts
 
