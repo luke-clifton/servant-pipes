@@ -16,26 +16,20 @@ import Servant.Pipes.Internal.Client
 import Control.Monad (unless)
 import Control.Monad.Except (throwError)
 
-import qualified Data.ByteString.Lazy as BL
-import Data.ByteString as BS (ByteString, null)
-import Data.ByteString.Lazy (fromStrict)
+import Data.ByteString (ByteString)
 import Data.ByteString.Builder (byteString)
 import Data.Maybe (fromMaybe)
-import Data.Monoid ((<>))
 
 import GHC.TypeLits (Nat, KnownNat, natVal)
 
-import qualified Network.HTTP.Client as HC
-import Network.HTTP.Client (Manager, responseOpen, responseClose, brRead)
-import Network.HTTP.Types (hAccept, hContentType, Method, Header, statusCode)
-import Network.HTTP.Media (MediaType, mapAcceptMedia, renderHeader, matches, (//), parseAccept)
+import Network.HTTP.Client (Manager)
+import Network.HTTP.Types (hAccept, hContentType, Method, Header)
+import Network.HTTP.Media (MediaType, mapAcceptMedia, renderHeader, matches)
 import Network.Wai (requestHeaders, responseStream)
 
-import qualified Pipes.Prelude as P
-import Pipes (Producer, (>->), runEffect, lift, for, liftIO, yield)
-import Pipes.ByteString (toLazyM)
+import Pipes (Producer, (>->), runEffect, lift, for, liftIO)
 import Pipes.Csv (ToRecord, FromRecord, encodeWith, decodeWith, HasHeader(..))
-import Pipes.Safe (SafeT, runSafeT, MonadSafe(..))
+import Pipes.Safe (SafeT)
 
 import Servant (StdMethod(..), Proxy(..), HasServer(..), err406, ReflectMethod(..))
 import Servant.API.ContentTypes (AllMime, Accept, contentType, AcceptHeader(..))
@@ -63,7 +57,7 @@ instance ReflectFlush 'NoFlush where
 	reflectFlush Proxy = NoFlush
 
 -- | The combinator to use when you want a streaming interface for your
--- servant API. See also @GetStream@, @PutStream@ and @PostStream@.
+-- servant API. See also `GetStream`, `PutStream` and `PostStream`.
 data Stream
 	(method :: k)
 	(status :: Nat)
@@ -71,17 +65,17 @@ data Stream
 	(ctypes :: [*])
 	(a :: *)
 
--- | A useful abreviation of @Stream@
+-- | A useful abreviation of `Stream`
 type GetStream = Stream 'GET 200 'NoFlush
 
 ---------------------------------------------------------------------
 -- Serialisation and Deserialisation Typeclasses
 ---------------------------------------------------------------------
 
--- | Streaming version of @MimeRender@
+-- | Streaming version of `MimeRender`
 class StreamMimeRender (ctype :: k) a where
 
-	-- | Convert a @Producer@ of @a@s into a @Producer@ of @ByteString@s
+	-- | Convert a `Producer` of `a`s into a `Producer` of `ByteString`s
 	-- as required by the content type.
 	mimeStreamRender
 		:: Monad m
@@ -89,14 +83,14 @@ class StreamMimeRender (ctype :: k) a where
 		-> Producer a m ()
 		-> Producer ByteString m ()
 
--- | Streaming version of @MimeUnrender@
+-- | Streaming version of `MimeUnrender`
 class StreamMimeUnrender (ctype :: k) a where
 
 	-- | The error type used by the deserialiser.
 	type DecodeErr ctype a
 
-	-- | Convert a @Producer@ of @ByteString@s into a @Producer@ of
-	-- @Either (DecodeErr ctype a) a@.
+	-- | Convert a `Producer` of `ByteString`s into a `Producer` of
+	-- `Either (DecodeErr ctype a) a`.
 	mimeStreamUnrender
 		:: Monad m
 		=> Proxy ctype
@@ -129,6 +123,8 @@ instance
 -- HasClient Instance for Stream
 ---------------------------------------------------------------------
 
+-- | Perform a streaming request, checking the `Content-Type` header
+-- matches the expected value.
 performStreamRequestCT
 	:: (StreamMimeUnrender ct result, Accept ct)
 	=> Proxy ct

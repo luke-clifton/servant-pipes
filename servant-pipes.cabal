@@ -32,21 +32,24 @@ library
                      , servant-server
                      , wai
   hs-source-dirs:      src
-  ghc-options:         -Wall -fno-warn-tabs
+  ghc-options:         -Wall -fno-warn-tabs -Werror
   default-language:    Haskell2010
 
-test-suite test-servant-pipes
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      bench
-  other-modules:       Main
+-- A small demo of a streaming service
+executable yes-serve
+  hs-source-dirs:      yes-serve
   main-is:             Main.hs
   ghc-options:         -O2 -Wall -fno-warn-tabs -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
   build-depends:       base >=4.9 && <4.10
-                     , async
-                     , criterion
+                     , cassava
                      , pipes
+                     , servant
+                     , servant-server
                      , servant-pipes
+                     , wai
+                     , warp
+                     , vector
 
 benchmark bench-servant-pipes
   type:                exitcode-stdio-1.0
