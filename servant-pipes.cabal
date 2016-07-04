@@ -15,7 +15,7 @@ library
                      , Servant.Pipes.Internal
                      , Servant.Pipes.Internal.Client
                      , Servant.Pipes.Csv
-  build-depends:       base >=4.9 && <4.10
+  build-depends:       base >=4.8 && <4.10
                      , bytestring
                      , cassava
                      , http-client
