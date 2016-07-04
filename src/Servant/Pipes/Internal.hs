@@ -27,9 +27,9 @@ import Network.HTTP.Types (hAccept, hContentType, Method, Header)
 import Network.HTTP.Media (MediaType, mapAcceptMedia, renderHeader, matches)
 import Network.Wai (requestHeaders, responseStream)
 
-import Pipes (Producer, (>->), runEffect, lift, for, liftIO)
+import Pipes (Producer, (>->), runEffect, for, liftIO)
 import Pipes.Csv (ToRecord, FromRecord, encodeWith, decodeWith, HasHeader(..))
-import Pipes.Safe (SafeT)
+import Pipes.Safe (SafeT, runSafeT)
 
 import Servant (StdMethod(..), Proxy(..), HasServer(..), err406, ReflectMethod(..))
 import Servant.API.ContentTypes (AllMime, Accept, contentType, AcceptHeader(..))
@@ -180,7 +180,7 @@ instance
 	, AllStreamCTRender ctypes a
 	) => HasServer (Stream 'GET status flush ctypes a) context where
 
-	type ServerT (Stream 'GET status flush ctypes a) m = m (Producer a IO ())
+	type ServerT (Stream 'GET status flush ctypes a) m = m (Producer a (SafeT IO) ())
 
 	route Proxy _ action = leafRouter route'
 		where
@@ -203,9 +203,9 @@ instance
 										flushIt = case flushVal of
 											Flush -> flush
 											NoFlush -> return ()
-									runEffect $ for body $ \bs -> do
-										lift (write $ byteString bs)
-										lift flushIt
+									runSafeT . runEffect $ for body $ \bs -> do
+										liftIO (write $ byteString bs)
+										liftIO flushIt
 
 
 			ctypes = Proxy :: Proxy ctypes
