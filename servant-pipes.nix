@@ -1,7 +1,7 @@
 { mkDerivation, base, bytestring, cassava, http-client, http-media
 , http-types, mtl, pipes, pipes-bytestring, pipes-csv, pipes-safe
-, servant, servant-cassava, servant-client, servant-server, stdenv
-, vector, wai, warp
+, servant, servant-cassava, servant-client, servant-docs
+, servant-server, stdenv, unordered-containers, vector, wai, warp
 }:
 mkDerivation {
   pname = "servant-pipes";
@@ -12,7 +12,7 @@ mkDerivation {
   libraryHaskellDepends = [
     base bytestring cassava http-client http-media http-types mtl pipes
     pipes-bytestring pipes-csv pipes-safe servant servant-cassava
-    servant-client servant-server wai
+    servant-client servant-docs servant-server unordered-containers wai
   ];
   executableHaskellDepends = [
     base cassava pipes servant servant-server vector wai warp

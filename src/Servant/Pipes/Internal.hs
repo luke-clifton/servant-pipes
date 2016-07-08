@@ -1,24 +1,31 @@
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Servant.Pipes.Internal where
 
 import Servant.Pipes.Internal.Client
 
+import Control.Lens ((&), (.~),)
+
 import Control.Monad (unless)
 import Control.Monad.Except (throwError)
 
 import Data.ByteString (ByteString)
+import qualified Data.ByteString.Lazy as LBS
 import Data.ByteString.Builder (byteString)
+import qualified Data.HashMap.Strict as HashMap
 import Data.Maybe (fromMaybe)
+import Data.Text (Text)
+import qualified Data.Text as Text
 
 import GHC.TypeLits (Nat, KnownNat, natVal)
 
@@ -27,15 +34,17 @@ import Network.HTTP.Types (hAccept, hContentType, Method, Header)
 import Network.HTTP.Media (MediaType, mapAcceptMedia, renderHeader, matches)
 import Network.Wai (requestHeaders, responseStream)
 
-import Pipes (Producer, (>->), runEffect, for, liftIO)
+import Pipes (Producer, (>->), runEffect, for, liftIO, each)
+import Pipes.ByteString (toLazy)
 import Pipes.Csv (ToRecord, FromRecord, encodeWith, decodeWith, HasHeader(..))
 import Pipes.Safe (SafeT, runSafeT)
 
 import Servant (StdMethod(..), Proxy(..), HasServer(..), err406, ReflectMethod(..))
-import Servant.API.ContentTypes (AllMime, Accept, contentType, AcceptHeader(..))
+import Servant.API.ContentTypes (AllMime, Accept, contentType, AcceptHeader(..), AllMimeRender, allMime)
 import Servant.Client
 import Servant.Common.Req
 import Servant.CSV.Cassava (EncodeOpts(..), CSV', DecodeOpts(..))
+import Servant.Docs.Internal (HasDocs(..), DocOptions(..), ToSample(..), response, respStatus, respTypes, respBody, API(..), method, sampleByteStrings)
 import Servant.Server.Internal (leafRouter, ct_wildcard, RouteResult(..), runAction)
 
 ---------------------------------------------------------------------
@@ -137,12 +146,12 @@ performStreamRequestCT
 		, Producer (Either (DecodeErr ct result) result) (SafeT IO) ()
 		)
 
-performStreamRequestCT ct method req manager host = do
+performStreamRequestCT ct meth req manager host = do
 	let
 		acceptCt = contentType ct
 
 	(respCt, hdrs, p) <-
-		performStreamRequest method req{reqAccept = [acceptCt]} manager host
+		performStreamRequest meth req{reqAccept = [acceptCt]} manager host
 
 	unless (matches respCt acceptCt) $ do
 		body <- liftIO $ truncateBody p
@@ -163,10 +172,10 @@ instance
 
 	clientWithRoute Proxy req manager baseurl = do
 		let
-			method = reflectMethod (Proxy :: Proxy method)
+			meth = reflectMethod (Proxy :: Proxy method)
 
 		(_, stream) <-
-			performStreamRequestCT (Proxy :: Proxy ct) method req manager baseurl
+			performStreamRequestCT (Proxy :: Proxy ct) meth req manager baseurl
 
 		return stream
 
@@ -277,3 +286,44 @@ instance {-# OVERLAPPABLE #-}
 		in
 			mapAcceptMedia lkup accept
 
+---------------------------------------------------------------------
+-- HasDocs
+---------------------------------------------------------------------
+
+toSampleByteString
+	:: (ToSample a , AllStreamMimeRender ct a)
+	=> Proxy ct -> Proxy a -> [(Text, MediaType, LBS.ByteString)]
+toSampleByteString c p =
+	let
+		pr = each . fmap snd $ toSamples p
+		ar = allStreamMimeRender c pr
+		bs = map (\(m, producers) -> (Text.empty, m, toLazy producers)) ar
+	in
+		bs
+
+instance
+	( KnownNat status
+	, ReflectMethod method
+	, ToSample a
+	, AllStreamMimeRender (ct ': cts) a
+	) => HasDocs (Stream method status flush (ct ': cts) a) where
+    
+	docsFor Proxy (endpoint, action) DocOptions{..} = single endpoint' action'
+		where
+			single e a = API mempty (HashMap.singleton e a)
+
+			endpoint' = endpoint & method .~ method'
+
+			action' =
+				action
+					& response . respBody .~ take _maxSamples (toSampleByteString t p)
+					& response . respTypes .~ allMime t
+					& response . respStatus .~ status
+
+			t = Proxy :: Proxy (ct ': cts)
+
+			method' = reflectMethod (Proxy :: Proxy method)
+
+			status = fromInteger . natVal $ (Proxy :: Proxy status)
+
+			p = Proxy :: Proxy a

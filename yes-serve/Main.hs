@@ -1,32 +1,48 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeOperators #-}
 module Main where
 
 import Data.Csv
 import Data.Vector
 
+import GHC.Generics
+
 import Pipes as P hiding (Proxy)
 
 import Servant
+import Servant.API.ContentTypes
+import Servant.CSV.Cassava
+import Servant.Docs
 import Servant.Pipes.Csv
+
+import System.Environment
 
 import Network.Wai.Handler.Warp (run)
 
-data Yes = Yes
-data No = No
+data YesNo = Yes | No
+	deriving (Show, Generic)
 
-instance ToRecord Yes where
-	toRecord _ = singleton "yes"
+instance ToRecord YesNo where
+	toRecord Yes = singleton "yes"
+	toRecord No = singleton "no"
 
-instance ToRecord No where
-	toRecord _ = singleton "no"
+instance ToSample YesNo
 
 type YesNoApi = YesApi :<|> NoApi
 
-type YesApi = "yes" :> GetStream '[(CSV', DefaultEncodeOpts)] Yes
+data DefaultCsvOpts
 
-type NoApi = "no" :> GetStream '[(CSV', DefaultEncodeOpts)] No
+instance EncodeOpts DefaultCsvOpts where
+	encodeOpts _ = encodeOpts (Proxy :: Proxy DefaultEncodeOpts)
+
+instance DecodeOpts DefaultCsvOpts where
+	decodeOpts _ = decodeOpts (Proxy :: Proxy DefaultDecodeOpts)
+
+type YesApi = "yes" :> GetStream '[(CSV', DefaultCsvOpts)] YesNo
+
+type NoApi = "no" :> GetStream '[(CSV', DefaultCsvOpts)] YesNo
 
 yesNoApi :: Proxy YesNoApi
 yesNoApi = Proxy
@@ -43,6 +59,11 @@ yesNoService = yesService :<|> noService
 main :: IO ()
 main = do
 	
-	putStrLn "Running on port 8054"
+	args <- getArgs
 
-	run 8054 $ serve yesNoApi yesNoService
+	case args of
+		[] -> do
+			putStrLn "Running on port 8054"
+			run 8054 $ serve yesNoApi yesNoService
+		["--help"] -> do
+			putStrLn . markdown . docs $ yesNoApi
