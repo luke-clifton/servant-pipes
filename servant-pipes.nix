@@ -1,7 +1,8 @@
 { mkDerivation, base, bytestring, cassava, http-client, http-media
-, http-types, mtl, pipes, pipes-bytestring, pipes-csv, pipes-safe
-, servant, servant-cassava, servant-client, servant-docs
-, servant-server, stdenv, unordered-containers, vector, wai, warp
+, http-types, lens, mtl, pipes, pipes-bytestring, pipes-csv
+, pipes-safe, servant, servant-cassava, servant-client
+, servant-docs, servant-server, stdenv, text, unordered-containers
+, vector, wai, warp
 }:
 mkDerivation {
   pname = "servant-pipes";
@@ -10,12 +11,14 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    base bytestring cassava http-client http-media http-types mtl pipes
-    pipes-bytestring pipes-csv pipes-safe servant servant-cassava
-    servant-client servant-docs servant-server unordered-containers wai
+    base bytestring cassava http-client http-media http-types lens mtl
+    pipes pipes-bytestring pipes-csv pipes-safe servant servant-cassava
+    servant-client servant-docs servant-server text
+    unordered-containers wai
   ];
   executableHaskellDepends = [
-    base cassava pipes servant servant-server vector wai warp
+    base cassava pipes servant servant-cassava servant-docs
+    servant-server vector wai warp
   ];
   description = "Streaming requests in Servant using Pipes";
   license = stdenv.lib.licenses.bsd3;

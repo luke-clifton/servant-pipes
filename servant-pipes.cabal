@@ -49,6 +49,8 @@ executable yes-serve
                      , cassava
                      , pipes
                      , servant
+                     , servant-cassava
+                     , servant-docs
                      , servant-server
                      , servant-pipes
                      , wai

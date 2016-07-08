@@ -40,11 +40,11 @@ import Pipes.Csv (ToRecord, FromRecord, encodeWith, decodeWith, HasHeader(..))
 import Pipes.Safe (SafeT, runSafeT)
 
 import Servant (StdMethod(..), Proxy(..), HasServer(..), err406, ReflectMethod(..))
-import Servant.API.ContentTypes (AllMime, Accept, contentType, AcceptHeader(..), AllMimeRender, allMime)
+import Servant.API.ContentTypes (AllMime, Accept, contentType, AcceptHeader(..), allMime)
 import Servant.Client
 import Servant.Common.Req
 import Servant.CSV.Cassava (EncodeOpts(..), CSV', DecodeOpts(..))
-import Servant.Docs.Internal (HasDocs(..), DocOptions(..), ToSample(..), response, respStatus, respTypes, respBody, API(..), method, sampleByteStrings)
+import Servant.Docs.Internal (HasDocs(..), DocOptions(..), ToSample(..), response, respStatus, respTypes, respBody, API(..), method)
 import Servant.Server.Internal (leafRouter, ct_wildcard, RouteResult(..), runAction)
 
 ---------------------------------------------------------------------

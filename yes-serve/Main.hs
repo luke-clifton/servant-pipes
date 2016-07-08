@@ -12,7 +12,6 @@ import GHC.Generics
 import Pipes as P hiding (Proxy)
 
 import Servant
-import Servant.API.ContentTypes
 import Servant.CSV.Cassava
 import Servant.Docs
 import Servant.Pipes.Csv
@@ -62,8 +61,8 @@ main = do
 	args <- getArgs
 
 	case args of
-		[] -> do
-			putStrLn "Running on port 8054"
-			run 8054 $ serve yesNoApi yesNoService
 		["--help"] -> do
 			putStrLn . markdown . docs $ yesNoApi
+		_ -> do
+			putStrLn "Running on port 8054"
+			run 8054 $ serve yesNoApi yesNoService
